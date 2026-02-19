@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "music-app",
-    "slug": "music-app",
+    "name": "829 Music",
+    "slug": "829-music",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,15 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio",
+          "audio"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.nevula.x02.x829music"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +27,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.nevula.x02.x829music"
     },
     "web": {
       "output": "static",
@@ -43,6 +52,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "51ebf89a-b9ce-43cd-9355-ced03a39d385"
+      }
+    },
+    "owner": "music829"
   }
 }

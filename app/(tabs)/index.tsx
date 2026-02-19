@@ -1,98 +1,197 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Audio } from 'expo-av';
+import { useEffect, useState } from 'react';
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+/* 🌐 IP DE TU BACKEND */
+const API_URL = 'https://829-music-api.onrender.com:3000';
+
+type Track = {
+  id: number;
+  title: string;
+  artwork_url: string | null;
+  user: { username: string };
+};
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [query, setQuery] = useState('');
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [current, setCurrent] = useState<Track | null>(null);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [loading, setLoading] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    return () => {
+      sound?.unloadAsync();
+    };
+  }, [sound]);
+
+  /* 🔍 SEARCH */
+  const searchMusic = async () => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setTracks([]);
+
+    try {
+      const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+      const json = await res.json();
+      setTracks(json || []);
+    } catch {
+      setTracks([]);
+    }
+    setLoading(false);
+  };
+
+  /* ▶️ PLAY */
+  const playTrack = async (track: Track) => {
+    try {
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }
+
+      const res = await fetch(`${API_URL}/stream/${track.id}`);
+      const json = await res.json();
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: json.streamUrl },
+        { shouldPlay: true }
+      );
+
+      setSound(newSound);
+      setCurrent(track);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  /* ⏸ STOP */
+  const stop = async () => {
+    if (!sound) return;
+    await sound.stopAsync();
+    await sound.unloadAsync();
+    setSound(null);
+    setCurrent(null);
+  };
+
+  const renderItem = ({ item }: { item: Track }) => (
+    <TouchableOpacity style={styles.track} onPress={() => playTrack(item)}>
+      <Image
+        source={{
+          uri:
+            item.artwork_url?.replace('-large', '-t300x300') ||
+            'https://via.placeholder.com/300/111/999?text=🎵',
+        }}
+        style={styles.cover}
+      />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.trackTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.artist} numberOfLines={1}>
+          {item.user.username}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.searchBox}>
+        <TextInput
+          placeholder="Buscar música"
+          placeholderTextColor="#888"
+          value={query}
+          onChangeText={setQuery}
+          onSubmitEditing={searchMusic}
+          style={styles.input}
+        />
+      </View>
+
+      {loading && <Text style={styles.loading}>Buscando…</Text>}
+
+      <FlatList
+        data={tracks}
+        keyExtractor={item => item.id.toString()}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      />
+
+      {current && (
+        <View style={styles.player}>
+          <Image
+            source={{
+              uri:
+                current.artwork_url?.replace('-large', '-t100x100') ||
+                'https://via.placeholder.com/100/111/999?text=🎵',
+            }}
+            style={styles.playerCover}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.playerTitle} numberOfLines={1}>
+              {current.title}
+            </Text>
+            <Text style={styles.playerArtist} numberOfLines={1}>
+              {current.user.username}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={stop}>
+            <Text style={styles.pause}>⏸</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 
+/* 🎨 UI */
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, backgroundColor: '#000' },
+  searchBox: {
+    margin: 16,
+    backgroundColor: '#111',
+    borderRadius: 14,
+    paddingHorizontal: 14,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  input: { height: 44, color: '#fff', fontSize: 16 },
+  loading: { color: '#888', textAlign: 'center', marginBottom: 10 },
+  track: { flexDirection: 'row', alignItems: 'center', padding: 12 },
+  cover: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    marginRight: 12,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
+  trackTitle: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  artist: { color: '#888', fontSize: 13 },
+  player: {
+    position: 'absolute',
     bottom: 0,
     left: 0,
-    position: 'absolute',
+    right: 0,
+    backgroundColor: '#111',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderTopColor: '#222',
+    borderTopWidth: 1,
   },
+  playerCover: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  playerTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  playerArtist: { color: '#888', fontSize: 12 },
+  pause: { color: '#fff', fontSize: 22, paddingHorizontal: 10 },
 });
