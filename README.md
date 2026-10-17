@@ -11,7 +11,8 @@
 
 ## Abrir la app en el iPhone (Expo Go)
 
-El proyecto usa **Expo SDK 58**, la versión que soporta Expo Go en la App Store.
+El proyecto usa **Expo SDK 57**, la versión que abre hoy Expo Go en la App Store
+(Expo Go para SDK 58 todavía no llega a la App Store).
 
 1. Instala **Expo Go** en el iPhone.
 2. En la Mac (mismo Wi‑Fi que el iPhone):
