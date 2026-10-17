@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -33,36 +33,45 @@ export function CatalogScreen({ heading, collection, genres, kind }: Props) {
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [subject, setSubject] = useState('');
-  const [items, setItems] = useState<Title[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const requestId = useRef(0);
+  const [data, setData] = useState<{
+    key: string;
+    items: Title[];
+    total: number;
+    page: number;
+    error: boolean;
+  }>({ key: '', items: [], total: 0, page: 0, error: false });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [retry, setRetry] = useState(0);
 
-  const load = useCallback(
-    async (p: number) => {
-      const id = ++requestId.current;
-      setLoading(true);
-      setError(false);
-      try {
-        const res = await searchTitles({ collection, query: submitted, subject, page: p });
-        if (id !== requestId.current) return;
-        setItems(prev => (p === 1 ? res.items : [...prev, ...res.items]));
-        setTotal(res.total);
-        setPage(p);
-      } catch {
-        if (id === requestId.current) setError(true);
-      }
-      if (id === requestId.current) setLoading(false);
-    },
-    [collection, submitted, subject]
-  );
+  // Cada combinación de búsqueda + género es una lista distinta
+  const key = `${submitted}|${subject}|${retry}`;
 
   useEffect(() => {
-    setItems([]);
-    load(1);
-  }, [load]);
+    let alive = true;
+    searchTitles({ collection, query: submitted, subject, page: 1 })
+      .then(res => alive && setData({ key, items: res.items, total: res.total, page: 1, error: false }))
+      .catch(() => alive && setData({ key, items: [], total: 0, page: 0, error: true }));
+    return () => {
+      alive = false;
+    };
+  }, [collection, submitted, subject, key]);
+
+  const current = data.key === key;
+  const items = current ? data.items : [];
+  const error = current && data.error;
+  const loading = !current || loadingMore;
+
+  const loadMore = async () => {
+    if (loading || items.length >= data.total) return;
+    setLoadingMore(true);
+    try {
+      const res = await searchTitles({ collection, query: submitted, subject, page: data.page + 1 });
+      setData(d => (d.key === key ? { ...d, items: [...d.items, ...res.items], page: d.page + 1 } : d));
+    } catch {
+      // Se reintenta la próxima vez que se llegue al final
+    }
+    setLoadingMore(false);
+  };
 
   const renderItem = ({ item }: { item: Title }) => (
     <TouchableOpacity
@@ -102,7 +111,7 @@ export function CatalogScreen({ heading, collection, genres, kind }: Props) {
       />
 
       {error && (
-        <TouchableOpacity onPress={() => load(1)}>
+        <TouchableOpacity onPress={() => setRetry(r => r + 1)}>
           <Text style={styles.status}>Error de conexión. Toca para reintentar.</Text>
         </TouchableOpacity>
       )}
@@ -116,13 +125,11 @@ export function CatalogScreen({ heading, collection, genres, kind }: Props) {
         columnWrapperStyle={{ gap: 10 }}
         contentContainerStyle={styles.grid}
         onEndReachedThreshold={0.5}
-        onEndReached={() => {
-          if (!loading && items.length < total) load(page + 1);
-        }}
+        onEndReached={loadMore}
         ListEmptyComponent={
-          !loading && !error ? <Text style={styles.status}>Sin resultados</Text> : null
+          !loading && !error ? <Text style={styles.status}>Sin resultados</Text> : undefined
         }
-        ListFooterComponent={loading ? <ActivityIndicator color="#e50914" style={{ margin: 20 }} /> : null}
+        ListFooterComponent={loading ? <ActivityIndicator color="#e50914" style={{ margin: 20 }} /> : undefined}
       />
     </SafeAreaView>
   );

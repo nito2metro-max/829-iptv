@@ -81,7 +81,7 @@ export default function TitleScreen() {
           ListEmptyComponent={
             detail.episodes.length === 0 ? (
               <Text style={styles.status}>Este título no tiene video disponible.</Text>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item, index }) => (
             <TouchableOpacity style={styles.episode} onPress={() => play(item)}>

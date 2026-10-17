@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props<T extends string> = {
   options: { label: string; value: T }[];
@@ -9,28 +9,30 @@ type Props<T extends string> = {
 /* 🏷 Fila horizontal de filtros */
 export function Chips<T extends string>({ options, value, onChange }: Props<T>) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.row}
-      contentContainerStyle={styles.content}>
-      {options.map(o => {
-        const active = o.value === value;
-        return (
-          <TouchableOpacity
-            key={o.value || '_all'}
-            onPress={() => onChange(o.value)}
-            style={[styles.chip, active && styles.active]}>
-            <Text style={[styles.text, active && styles.activeText]}>{o.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+    <View style={styles.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.content}>
+        {options.map(o => {
+          const active = o.value === value;
+          return (
+            <TouchableOpacity
+              key={o.value || '_all'}
+              onPress={() => onChange(o.value)}
+              style={[styles.chip, active && styles.active]}>
+              <Text style={[styles.text, active && styles.activeText]}>{o.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexGrow: 0 },
+  // El View evita que la fila se encoja dentro de pantallas con flex (web)
+  row: { flexShrink: 0 },
   content: { paddingHorizontal: 16, gap: 8, paddingBottom: 10 },
   chip: {
     paddingHorizontal: 14,

@@ -57,11 +57,13 @@ export default function TvScreen() {
   const [picker, setPicker] = useState<'country' | 'category' | null>(null);
   const [pickerFilter, setPickerFilter] = useState('');
 
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [group, setGroup] = useState('');
+  const [result, setResult] = useState<{ url: string; channels: Channel[]; error: boolean }>({
+    url: '',
+    channels: [],
+    error: false,
+  });
+  const [groupState, setGroupState] = useState({ url: '', group: '' });
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetchCountries().then(setCountries).catch(() => {});
@@ -82,23 +84,23 @@ export default function TvScreen() {
             : customUrl;
 
   useEffect(() => {
-    if (!playlistUrl) {
-      setChannels([]);
-      return;
-    }
+    if (!playlistUrl) return;
     let alive = true;
-    setLoading(true);
-    setError(false);
-    setChannels([]);
-    setGroup('');
     fetchPlaylist(playlistUrl)
-      .then(list => alive && setChannels(list))
-      .catch(() => alive && setError(true))
-      .finally(() => alive && setLoading(false));
+      .then(list => alive && setResult({ url: playlistUrl, channels: list, error: false }))
+      .catch(() => alive && setResult({ url: playlistUrl, channels: [], error: true }));
     return () => {
       alive = false;
     };
   }, [playlistUrl]);
+
+  // El resultado y el grupo elegido solo valen para la lista que se está mostrando
+  const current = result.url === playlistUrl;
+  const channels = useMemo(() => (current ? result.channels : []), [current, result.channels]);
+  const error = current && result.error;
+  const loading = !!playlistUrl && !current;
+  const group = groupState.url === playlistUrl ? groupState.group : '';
+  const setGroup = (g: string) => setGroupState({ url: playlistUrl, group: g });
 
   // Grupos del país/lista: Noticias, Películas y Deportes primero, el resto alfabético
   const groups = useMemo(() => {
@@ -156,7 +158,7 @@ export default function TvScreen() {
           {item.name}
         </Text>
         <Text style={styles.channelGroup} numberOfLines={1}>
-          {item.group}
+          {categoryLabel(item.group)}
         </Text>
       </View>
       <Text style={styles.live}>● EN VIVO</Text>

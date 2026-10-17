@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { useEffect, useState } from 'react';
 import {
   FlatList,
@@ -25,15 +25,12 @@ export default function HomeScreen() {
   const [query, setQuery] = useState('');
   const [tracks, setTracks] = useState<Track[]>([]);
   const [current, setCurrent] = useState<Track | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const player = useAudioPlayer();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-    return () => {
-      sound?.unloadAsync();
-    };
-  }, [sound]);
+    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true });
+  }, []);
 
   /* 🔍 SEARCH */
   const searchMusic = async () => {
@@ -54,20 +51,13 @@ export default function HomeScreen() {
   /* ▶️ PLAY */
   const playTrack = async (track: Track) => {
     try {
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-      }
+      player.pause();
 
       const res = await fetch(`${API_URL}/stream/${track.id}`);
       const json = await res.json();
 
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: json.streamUrl },
-        { shouldPlay: true }
-      );
-
-      setSound(newSound);
+      player.replace({ uri: json.streamUrl });
+      player.play();
       setCurrent(track);
     } catch (e) {
       console.log(e);
@@ -75,11 +65,8 @@ export default function HomeScreen() {
   };
 
   /* ⏸ STOP */
-  const stop = async () => {
-    if (!sound) return;
-    await sound.stopAsync();
-    await sound.unloadAsync();
-    setSound(null);
+  const stop = () => {
+    player.pause();
     setCurrent(null);
   };
 

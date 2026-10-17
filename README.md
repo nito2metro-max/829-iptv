@@ -9,18 +9,30 @@
 | **Series** | [Internet Archive · Classic TV](https://archive.org/details/classic_tv) | Series clásicas de **dominio público** con lista de episodios. |
 | **Música** | Backend propio (`829-music-backend/`) | Buscador y reproductor de música. |
 
-Archivos principales:
+## Abrir la app en el iPhone (Expo Go)
+
+El proyecto usa **Expo SDK 58**, la versión que soporta Expo Go en la App Store.
+
+1. Instala **Expo Go** en el iPhone.
+2. En la Mac (mismo Wi‑Fi que el iPhone):
+   ```bash
+   npm install
+   npx expo start --go
+   ```
+3. Escanea el código QR con la cámara del iPhone.
+
+## Archivos principales
 
 - `app/(tabs)/tv.tsx`, `app/(tabs)/movies.tsx`, `app/(tabs)/series.tsx`
 - `app/title/[id].tsx` — ficha de película/serie con episodios
-- `app/player.tsx` — reproductor (HLS `.m3u8` y MP4) con soporte de `Referer`/`User-Agent`
+- `app/player.tsx` — reproductor `expo-video` (HLS `.m3u8` y MP4) con soporte de `Referer`/`User-Agent`
 - `hooks/iptv.ts` — parser M3U y catálogo de países/categorías
 - `hooks/archive.ts` — búsqueda y archivos de video del Internet Archive
 
 > Solo se usan fuentes legales y gratuitas. Muchas señales de TV son HTTP, por eso
 > `app.json` habilita tráfico sin cifrar (Android `usesCleartextTraffic`, iOS ATS).
-> Como cambia la configuración nativa, hay que **recompilar el dev client**
-> (`npx expo run:android` / `eas build`).
+> Esa configuración solo aplica a la app compilada (`npx expo run:ios` / `eas build`);
+> en Expo Go algunos canales `http` pueden no reproducirse.
 
 ---
 
