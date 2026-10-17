@@ -14,7 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chips } from '@/components/media/chips';
-import { IPTV_ALL_URL, iptvCategoryUrl, iptvCountryUrl } from '@/constants/iptv';
+import {
+  categoryLabel,
+  FEATURED_CATEGORIES,
+  IPTV_ALL_URL,
+  iptvCategoryUrl,
+  iptvCountryUrl,
+} from '@/constants/iptv';
 import {
   Category,
   Channel,
@@ -24,11 +30,14 @@ import {
   fetchPlaylist,
 } from '@/hooks/iptv';
 
-type Mode = 'country' | 'category' | 'world' | 'custom';
+type Mode = 'country' | 'news' | 'movies' | 'sports' | 'category' | 'world' | 'custom';
 
 const MODES: { label: string; value: Mode }[] = [
   { label: '🌎 País', value: 'country' },
-  { label: '🗂 Categoría', value: 'category' },
+  { label: '📰 Noticias', value: 'news' },
+  { label: '🎬 Películas', value: 'movies' },
+  { label: '⚽ Deportes', value: 'sports' },
+  { label: '🗂 Más categorías', value: 'category' },
   { label: '🌐 Todo el mundo', value: 'world' },
   { label: '➕ Mi lista M3U', value: 'custom' },
 ];
@@ -40,7 +49,9 @@ export default function TvScreen() {
   const [countries, setCountries] = useState<Country[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [country, setCountry] = useState<Country>({ name: 'República Dominicana', code: 'DO', flag: '🇩🇴' });
-  const [category, setCategory] = useState<Category>({ id: 'news', name: 'News' });
+  const [category, setCategory] = useState<Category>({ id: 'kids', name: 'Kids' });
+  // País opcional para filtrar dentro de una categoría (null = todos los países)
+  const [categoryCountry, setCategoryCountry] = useState<Country | null>(null);
   const [customUrl, setCustomUrl] = useState('');
   const [customDraft, setCustomDraft] = useState('');
   const [picker, setPicker] = useState<'country' | 'category' | null>(null);
@@ -57,14 +68,18 @@ export default function TvScreen() {
     fetchCategories().then(setCategories).catch(() => {});
   }, []);
 
+  const isCategoryMode = mode === 'news' || mode === 'movies' || mode === 'sports' || mode === 'category';
+
   const playlistUrl =
     mode === 'country'
       ? iptvCountryUrl(country.code)
       : mode === 'category'
         ? iptvCategoryUrl(category.id)
-        : mode === 'world'
-          ? IPTV_ALL_URL
-          : customUrl;
+        : isCategoryMode
+          ? iptvCategoryUrl(mode)
+          : mode === 'world'
+            ? IPTV_ALL_URL
+            : customUrl;
 
   useEffect(() => {
     if (!playlistUrl) {
@@ -85,26 +100,41 @@ export default function TvScreen() {
     };
   }, [playlistUrl]);
 
+  // Grupos del país/lista: Noticias, Películas y Deportes primero, el resto alfabético
   const groups = useMemo(() => {
-    const set = new Set(channels.map(c => c.group));
-    return [{ label: 'Todos', value: '' }, ...[...set].sort().map(g => ({ label: g, value: g }))];
+    const rank = (g: string) => {
+      const i = FEATURED_CATEGORIES.indexOf(g.toLowerCase());
+      return i === -1 ? FEATURED_CATEGORIES.length : i;
+    };
+    const list = [...new Set(channels.map(c => c.group))].sort(
+      (a, b) => rank(a) - rank(b) || categoryLabel(a).localeCompare(categoryLabel(b))
+    );
+    return [{ label: 'Todos', value: '' }, ...list.map(g => ({ label: categoryLabel(g), value: g }))];
   }, [channels]);
+
+  const countryFilter = isCategoryMode ? categoryCountry?.code.toLowerCase() : undefined;
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return channels.filter(
-      c => (!group || c.group === group) && (!q || c.name.toLowerCase().includes(q))
+      c =>
+        (!group || c.group === group) &&
+        (!countryFilter || c.country === countryFilter) &&
+        (!q || c.name.toLowerCase().includes(q))
     );
-  }, [channels, group, search]);
+  }, [channels, group, search, countryFilter]);
 
   const pickerItems = useMemo(() => {
     const q = pickerFilter.trim().toLowerCase();
-    const list =
+    const list: { key: string; label: string; raw: Country | Category | null }[] =
       picker === 'country'
-        ? countries.map(c => ({ key: c.code, label: `${c.flag}  ${c.name}`, raw: c }))
-        : categories.map(c => ({ key: c.id, label: c.name, raw: c }));
+        ? [
+            ...(isCategoryMode ? [{ key: '_all', label: '🌐  Todos los países', raw: null }] : []),
+            ...countries.map(c => ({ key: c.code, label: `${c.flag}  ${c.name}`, raw: c })),
+          ]
+        : categories.map(c => ({ key: c.id, label: categoryLabel(c.id), raw: c }));
     return list.filter(i => !q || i.label.toLowerCase().includes(q));
-  }, [picker, pickerFilter, countries, categories]);
+  }, [picker, pickerFilter, countries, categories, isCategoryMode]);
 
   const play = (c: Channel) =>
     router.push({
@@ -148,7 +178,15 @@ export default function TvScreen() {
       )}
       {mode === 'category' && (
         <TouchableOpacity style={styles.selector} onPress={() => setPicker('category')}>
-          <Text style={styles.selectorText}>{category.name}</Text>
+          <Text style={styles.selectorText}>{categoryLabel(category.id)}</Text>
+          <Text style={styles.selectorArrow}>▾</Text>
+        </TouchableOpacity>
+      )}
+      {isCategoryMode && (
+        <TouchableOpacity style={styles.selector} onPress={() => setPicker('country')}>
+          <Text style={styles.selectorText}>
+            {categoryCountry ? `${categoryCountry.flag}  ${categoryCountry.name}` : '🌐  Todos los países'}
+          </Text>
           <Text style={styles.selectorArrow}>▾</Text>
         </TouchableOpacity>
       )}
@@ -173,17 +211,22 @@ export default function TvScreen() {
 
       <View style={styles.searchBox}>
         <TextInput
-          placeholder={`Buscar entre ${channels.length} canales`}
+          placeholder={`Buscar entre ${visible.length} canales`}
           placeholderTextColor="#888"
           value={search}
           onChangeText={setSearch}
           style={styles.input}
         />
       </View>
-      {groups.length > 2 && <Chips options={groups} value={group} onChange={setGroup} />}
+      {!isCategoryMode && groups.length > 2 && (
+        <Chips options={groups} value={group} onChange={setGroup} />
+      )}
 
       {loading && <ActivityIndicator color="#e50914" style={{ margin: 20 }} />}
       {error && <Text style={styles.status}>No se pudo cargar la lista de canales.</Text>}
+      {!loading && !error && channels.length > 0 && visible.length === 0 && (
+        <Text style={styles.status}>No hay canales con ese filtro.</Text>
+      )}
       {mode === 'custom' && !customUrl && (
         <Text style={styles.status}>
           Pega la URL de una lista M3U de tu proveedor IPTV para ver sus canales aquí.
@@ -224,8 +267,9 @@ export default function TvScreen() {
               <TouchableOpacity
                 style={styles.pickerItem}
                 onPress={() => {
-                  if (picker === 'country') setCountry(item.raw as Country);
-                  else setCategory(item.raw as Category);
+                  if (picker === 'category') setCategory(item.raw as Category);
+                  else if (isCategoryMode) setCategoryCountry(item.raw as Country | null);
+                  else setCountry(item.raw as Country);
                   setPicker(null);
                   setPickerFilter('');
                 }}>

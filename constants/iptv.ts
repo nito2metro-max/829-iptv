@@ -6,6 +6,48 @@ export const IPTV_ALL_URL = `${IPTV_BASE}/iptv/index.m3u`;
 export const iptvCountryUrl = (code: string) => `${IPTV_BASE}/iptv/countries/${code.toLowerCase()}.m3u`;
 export const iptvCategoryUrl = (id: string) => `${IPTV_BASE}/iptv/categories/${id}.m3u`;
 
+/* 🏷 Nombres en español de las categorías de iptv-org */
+export const CATEGORY_LABELS: Record<string, string> = {
+  auto: 'Autos',
+  animation: 'Animación',
+  business: 'Negocios',
+  classic: 'Clásicos',
+  comedy: 'Comedia',
+  cooking: 'Cocina',
+  culture: 'Cultura',
+  documentary: 'Documentales',
+  education: 'Educación',
+  entertainment: 'Entretenimiento',
+  family: 'Familia',
+  general: 'General',
+  interactive: 'Interactivo',
+  kids: 'Infantil',
+  legislative: 'Legislativo',
+  lifestyle: 'Estilo de vida',
+  movies: 'Películas',
+  music: 'Música',
+  news: 'Noticias',
+  outdoor: 'Aire libre',
+  public: 'Público',
+  relax: 'Relax',
+  religious: 'Religión',
+  series: 'Series',
+  science: 'Ciencia',
+  shop: 'Compras',
+  sports: 'Deportes',
+  travel: 'Viajes',
+  weather: 'Clima',
+  undefined: 'Otros',
+};
+
+// Categorías que aparecen primero en los filtros
+export const FEATURED_CATEGORIES = ['news', 'movies', 'sports'];
+
+// Categorías que nunca se muestran
+export const HIDDEN_CATEGORIES = ['xxx'];
+
+export const categoryLabel = (name: string) => CATEGORY_LABELS[name.toLowerCase()] ?? name;
+
 /* 🎬 Películas y series de dominio público (Internet Archive) */
 export const ARCHIVE_BASE = 'https://archive.org';
 export const MOVIES_COLLECTION = 'feature_films';

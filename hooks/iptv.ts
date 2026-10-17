@@ -1,10 +1,11 @@
-import { IPTV_CATEGORIES_URL, IPTV_COUNTRIES_URL } from '@/constants/iptv';
+import { HIDDEN_CATEGORIES, IPTV_CATEGORIES_URL, IPTV_COUNTRIES_URL } from '@/constants/iptv';
 
 export type Channel = {
   id: string;
   name: string;
   logo: string | null;
   group: string;
+  country: string | null; // código ISO en minúsculas, sacado de tvg-id ("A7TV.do@HD" → "do")
   url: string;
   referrer?: string;
   userAgent?: string;
@@ -30,7 +31,9 @@ export function parseM3U(text: string): Channel[] {
 
     if (line.startsWith('#EXTINF')) {
       const comma = line.lastIndexOf(',');
+      const tvgId = attr(line, 'tvg-id');
       pending = {
+        country: tvgId.match(/\.([a-z]{2})(@|$)/i)?.[1].toLowerCase() ?? null,
         name: (comma >= 0 ? line.slice(comma + 1) : '').trim() || 'Sin nombre',
         logo: attr(line, 'tvg-logo') || null,
         group: attr(line, 'group-title').split(';')[0] || 'General',
@@ -42,6 +45,10 @@ export function parseM3U(text: string): Channel[] {
       if (k === 'http-referrer') pending.referrer = v.join('=');
       if (k === 'http-user-agent') pending.userAgent = v.join('=');
     } else if (!line.startsWith('#') && pending) {
+      if (HIDDEN_CATEGORIES.includes(pending.group.toLowerCase())) {
+        pending = null;
+        continue;
+      }
       channels.push({ ...pending, url: line, id: `${channels.length}-${line}` });
       pending = null;
     }
@@ -64,5 +71,7 @@ export async function fetchCountries(): Promise<Country[]> {
 export async function fetchCategories(): Promise<Category[]> {
   const res = await fetch(IPTV_CATEGORIES_URL);
   const json: Category[] = await res.json();
-  return json.sort((a, b) => a.name.localeCompare(b.name));
+  return json
+    .filter(c => !HIDDEN_CATEGORIES.includes(c.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
