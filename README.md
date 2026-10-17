@@ -1,3 +1,29 @@
+# 829 — TV, Películas, Series y Música
+
+## Secciones
+
+| Pestaña | Fuente | Qué incluye |
+| --- | --- | --- |
+| **TV** | [iptv-org](https://github.com/iptv-org/iptv) | Más de 10.000 canales gratuitos y públicos de todo el mundo: por país, por categoría o la lista mundial completa. También puedes cargar tu propia lista **M3U** de tu proveedor IPTV. |
+| **Películas** | [Internet Archive · Feature Films](https://archive.org/details/feature_films) | Miles de películas de **dominio público**, con buscador y géneros. |
+| **Series** | [Internet Archive · Classic TV](https://archive.org/details/classic_tv) | Series clásicas de **dominio público** con lista de episodios. |
+| **Música** | Backend propio (`829-music-backend/`) | Buscador y reproductor de música. |
+
+Archivos principales:
+
+- `app/(tabs)/tv.tsx`, `app/(tabs)/movies.tsx`, `app/(tabs)/series.tsx`
+- `app/title/[id].tsx` — ficha de película/serie con episodios
+- `app/player.tsx` — reproductor (HLS `.m3u8` y MP4) con soporte de `Referer`/`User-Agent`
+- `hooks/iptv.ts` — parser M3U y catálogo de países/categorías
+- `hooks/archive.ts` — búsqueda y archivos de video del Internet Archive
+
+> Solo se usan fuentes legales y gratuitas. Muchas señales de TV son HTTP, por eso
+> `app.json` habilita tráfico sin cifrar (Android `usesCleartextTraffic`, iOS ATS).
+> Como cambia la configuración nativa, hay que **recompilar el dev client**
+> (`npx expo run:android` / `eas build`).
+
+---
+
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
